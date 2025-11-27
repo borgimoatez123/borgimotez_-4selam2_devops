@@ -2,35 +2,41 @@ pipeline {
     agent any
 
     environment {
-        GIT_CREDENTIALS = 'github-pat'
+        DOCKER_HUB_REPO = "borgimoatez123/student-management"
+        IMAGE_TAG = "latest"
     }
 
     stages {
-
-        stage('Checkout') {
+        
+        stage('Build Maven Project') {
             steps {
-                git url: 'https://github.com/borgimoatez123/borgimotez_-4selam2_devops.git',
-                    branch: 'main',
-                    credentialsId: GIT_CREDENTIALS
+                sh 'mvn clean package -DskipTests'
             }
         }
 
-        stage('Build') {
+        stage('Build Docker Image') {
             steps {
-                sh 'mvn -B -DskipTests clean package'
+                sh 'docker build -t $DOCKER_HUB_REPO:$IMAGE_TAG .'
             }
         }
 
-        stage('Archive Artifact') {
+        stage('Push Docker Image to Docker Hub') {
             steps {
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                withCredentials([usernamePassword(
+                    credentialsId: 'docker-hub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+                    sh 'docker push $DOCKER_HUB_REPO:$IMAGE_TAG'
+                }
             }
         }
     }
 
     post {
         success {
-            echo "Build DONE ✔"
+            echo "Build + Docker Push SUCCESS 🎉"
         }
         failure {
             echo "Build FAILED ❌"
