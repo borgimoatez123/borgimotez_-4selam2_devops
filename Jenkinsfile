@@ -5,7 +5,7 @@ pipeline {
         GIT_CREDENTIALS = 'github-pat'
         DOCKERHUB_CREDENTIALS = 'docker-hub-creds'
         DOCKER_IMAGE = "borgimoatez123/student-management"
-        KUBE_CREDENTIALS = "kubeconfig-cred"   // secret file
+        KUBE_CREDENTIALS = "kubeconfig-cred"
         K8S_NAMESPACE = "devops"
     }
 
@@ -33,11 +33,9 @@ pipeline {
 
         stage('Docker Push') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: DOCKERHUB_CREDENTIALS,
-                    usernameVariable: 'DOCKERHUB_USER',
-                    passwordVariable: 'DOCKERHUB_PASS'
-                )]) {
+                withCredentials([usernamePassword(credentialsId: DOCKERHUB_CREDENTIALS,
+                usernameVariable: 'DOCKERHUB_USER',
+                passwordVariable: 'DOCKERHUB_PASS')]) {
 
                     sh '''
                         echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
@@ -47,41 +45,26 @@ pipeline {
             }
         }
 
-        stage('Archive Artifact') {
-            steps {
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-            }
-        }
-
-        /* ---------- FIXED KUBERNETES DEPLOY STAGE ---------- */
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: KUBE_CREDENTIALS, variable: 'KUBECONFIG')]) {
 
                     sh '''
-                        echo "📌 Using kubeconfig: $KUBECONFIG"
+                        echo "🚀 Deploying to Kubernetes..."
 
-                        echo "📌 Deploying MySQL..."
-                        kubectl apply -f k8s/mysql-secret.yaml -n devops || true
-                        kubectl apply -f k8s/mysql-pv-pvc.yaml -n devops || true
-                        kubectl apply -f k8s/mysql-deployment.yaml -n devops || true
-                        kubectl apply -f k8s/mysql-service.yaml -n devops || true
-
-                        echo "📌 Deploying Spring Boot..."
+                        # Deploy Spring Boot
                         kubectl apply -f k8s/springboot-deployment.yaml -n devops
                         kubectl apply -f k8s/springboot-service.yaml -n devops
 
-                        echo "🚀 Kubernetes deployment finished"
+                        echo "✔ Deployment done"
                     '''
                 }
             }
         }
-        /* --------------------------------------------------- */
-
     }
 
     post {
-        success { echo "✔ BUILD + DOCKER PUSH + K8S DEPLOY SUCCESSFUL" }
+        success { echo "✔ FULL PIPELINE SUCCESS" }
         failure { echo "❌ PIPELINE FAILED" }
     }
 }
