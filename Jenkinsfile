@@ -25,6 +25,22 @@ pipeline {
             }
         }
 
+        // =========================
+        // 🔎 SONARQUBE ANALYSIS
+        // =========================
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=student-management \
+                        -Dsonar.projectName="Student Management" \
+                        -Dsonar.branch.name=main
+                    '''
+                }
+            }
+        }
+
         stage('Docker Build') {
             steps {
                 sh 'docker build -t $DOCKER_IMAGE:latest .'
@@ -33,10 +49,11 @@ pipeline {
 
         stage('Docker Push') {
             steps {
-                withCredentials([usernamePassword(credentialsId: DOCKERHUB_CREDENTIALS,
-                usernameVariable: 'DOCKERHUB_USER',
-                passwordVariable: 'DOCKERHUB_PASS')]) {
-
+                withCredentials([usernamePassword(
+                    credentialsId: DOCKERHUB_CREDENTIALS,
+                    usernameVariable: 'DOCKERHUB_USER',
+                    passwordVariable: 'DOCKERHUB_PASS'
+                )]) {
                     sh '''
                         echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
                         docker push $DOCKER_IMAGE:latest
@@ -48,11 +65,9 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: KUBE_CREDENTIALS, variable: 'KUBECONFIG')]) {
-
                     sh '''
                         echo "🚀 Deploying to Kubernetes..."
 
-                        # Deploy Spring Boot
                         kubectl apply -f k8s/springboot-deployment.yaml -n devops
                         kubectl apply -f k8s/springboot-service.yaml -n devops
 
@@ -64,7 +79,11 @@ pipeline {
     }
 
     post {
-        success { echo "✔ FULL PIPELINE SUCCESS" }
-        failure { echo "❌ PIPELINE FAILED" }
+        success {
+            echo "✅ FULL PIPELINE SUCCESS"
+        }
+        failure {
+            echo "❌ PIPELINE FAILED"
+        }
     }
 }
