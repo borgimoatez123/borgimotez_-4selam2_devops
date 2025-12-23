@@ -68,6 +68,16 @@ pipeline {
                 }
             }
         }
+        
+        stage('Health Check') {
+            steps {
+                sh '''
+                    echo "Waiting for application..."
+                    sleep 20
+                    curl -f http://springboot-service.devops.svc.cluster.local:8080/student/actuator/health
+                '''
+            }
+        }
     }
     
     post {
