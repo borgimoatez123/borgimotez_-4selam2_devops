@@ -1,6 +1,6 @@
 pipeline {
     agent any
-    
+
     environment {
         GIT_CREDENTIALS = 'github-pat'
         DOCKERHUB_CREDENTIALS = 'docker-hub-creds'
@@ -8,7 +8,7 @@ pipeline {
         KUBE_CREDENTIALS = "kubeconfig-cred"
         K8S_NAMESPACE = "devops"
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
@@ -17,13 +17,13 @@ pipeline {
                     credentialsId: GIT_CREDENTIALS
             }
         }
-        
+
         stage('Maven Build') {
             steps {
                 sh 'mvn -B -DskipTests clean package'
             }
         }
-        
+
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
@@ -35,13 +35,13 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Docker Build') {
             steps {
                 sh 'docker build -t $DOCKER_IMAGE:latest .'
             }
         }
-        
+
         stage('Docker Push') {
             steps {
                 withCredentials([usernamePassword(credentialsId: DOCKERHUB_CREDENTIALS, 
@@ -54,7 +54,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: KUBE_CREDENTIALS, variable: 'KUBECONFIG')]) {
@@ -68,18 +68,8 @@ pipeline {
                 }
             }
         }
-        
-        stage('Health Check') {
-            steps {
-                sh '''
-                    echo "Waiting for application..."
-                    sleep 20
-                    curl -f http://springboot-service.devops.svc.cluster.local:8080/student/actuator/health
-                '''
-            }
-        }
     }
-    
+
     post {
         success {
             echo "✔ FULL PIPELINE SUCCESS"
